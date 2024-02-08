@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+     <title>Download Data</title>
+  <style>
+    *{
+      font-weight: 600;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+        input[type=datetime-local] {
+        width: 300px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-shadow: 0px 0px 5px 0px #447b80;
+
+
+    }
+    .container {
+        display: flex;
+        justify-content: center;
+        align-content: center;
+        height: 100vh;
+        
+        /* width: 5px; */
+    }
+
+    .form-container {
+        border: 2px ;
+        background-color: rgb(242, 242, 242);
+        box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+        padding: 100px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        /* align-items: center; */
+        place-items: center;
+        margin: auto;
+        margin-left: 30%;
+        
+        /* height: 400%; */
+        gap: 10px;
+        /* align-content: center; */
+    }
+
+    .download-link {
+      display: inline-block;
+      margin: 10px;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      text-decoration: none;
+      animation: download-button-animation 2s infinite alternate;
+    }
+
+    @keyframes download-button-animation {
+      0% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.1);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    /* CSS for the table */
+    #dataTable {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 0 auto;
+      animation: table-fade-in 2s ease-in;
+      /* align-items: center; */
+    }
+
+    @keyframes table-fade-in {
+      0% {
+        opacity: 0;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+
+    /* CSS for the table rows */
+    #dataTable tr {
+      animation: table-row-fade-in 1s ease-in;
+    }
+
+    @keyframes table-row-fade-in {
+      0% {
+        opacity: 0;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+
+    /* CSS for the table cells */
+    #dataTable td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      animation: table-cell-fade-in 0.5s ease-in;
+    }
+
+    @keyframes table-cell-fade-in {
+      0% {
+        opacity: 0;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+    select#machines {
+            width: 200px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0px 0px 5px 0px #447b80;
+        }
+  </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="form-container">
+            <label for="machines" style=font-size:20px>Machine:</label>
+            <select id="machines"style=font-size:20px>
+            <option value="Machine0" style=font-size:20px>Select a Machine</option>
+            <option value="Machine1" style=font-size:20px>Machine1</option>
+            <option value="Machine2" style=font-size:20px>Machine2</option>
+            <option value="Machine" style=font-size:20px>Machine3</option>
+            </select>&nbsp;
+            <label for="startDate" style=font-size:20px><b>Start Date: </b></label>
+            <input type="datetime-local" id="startDate" style=font-size:20px>
+            &nbsp;
+            <label for="endDate" style=font-size:20px><b>End Date:</b></label>
+            <input type="datetime-local" id="endDate" style=font-size:20px>
+            &nbsp;
+            <a id="downloadLink" class="download-link" style=font-size:20px><b>Download Excel</b></a>
+        </div>
+        <table id="dataTable"></table>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script>
+        document.getElementById('downloadLink').addEventListener('click', function() {
+            const startDate = new Date(document.getElementById('startDate').value);
+            const endDate = new Date(document.getElementById('endDate').value);
+
+            fetch('CNC.csv')
+                .then(response => response.text())
+                .then(csvString => {
+                    const data = Papa.parse(csvString, { header: true }).data;
+                    const filteredData = data.filter(row => {
+                        const date = new Date(row.Date);
+                        return date >= startDate && date <= endDate;
+                    });
+
+                    const workbook = XLSX.utils.book_new();
+                    const worksheet = XLSX.utils.json_to_sheet(filteredData);
+                    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+
+                    const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'binary' });
+                    const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' });
+
+                    const link = document.getElementById('downloadLink');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'data.xlsx';
+
+                    // Display the filtered data in a table
+                    const table = document.getElementById('dataTable');
+                    table.innerHTML = ''; // Clear the table
+                    filteredData.forEach(row => {
+                        const tr = document.createElement('tr');
+                        Object.values(row).forEach(cell => {
+                            const td = document.createElement('td');
+                            td.textContent = cell;
+                            tr.appendChild(td);
+                        });
+                        table.appendChild(tr);
+                    });
+                });
+            });
+
+        function s2ab(s) {
+            const buf = new ArrayBuffer(s.length);
+            const view = new Uint8Array(buf);
+            for (let i = 0; i < s.length; i++) {
+                view[i] = s.charCodeAt(i) & 0xFF;
+            }
+            return buf;
+        }
+    </script>
+</body>
+
+</html>
